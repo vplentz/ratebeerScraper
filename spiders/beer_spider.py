@@ -10,39 +10,47 @@ import time
 
 class BeerSpider(scrapy.Spider):
     name = "beer"
+
     def start_requests(self):
         urls = ['https://www.ratebeer.com/breweries/brazil/0/31/',]
         for url in urls:
-            yield scrapy.Request(url=url, callback=self.parse)
+            yield scrapy.Request(url=url, callback=self.parse) #calls parse
 
-    # def parse(self, response):
-    #     yield scrapy.FormRequest.from_response(response=response,
-    #                                            formdata={'author': 'Steve Martin', 'tag': 'humor'},
-    #                                            callback=self.parse_item)
-    #
     def parse(self, response): #parses breweries links
         breweries = response.xpath('//div[@id="active"]/table[@id="brewerTable"]/tr/td/a/@href').extract()
-        # breweries_links = []
-        for brewery in breweries[::2]: #get only the links
-            url = 'https://www.ratebeer.com'+brewery
-            # print('BREWERY' ,url)
-            yield scrapy.Request(url = url, callback=self.parse_brewery)
+        #for brewery in breweries[::2]: #get only the links
+        url = 'https://www.ratebeer.com'+breweries[0]
+        yield scrapy.Request(url = url, callback=self.parse_brewery) #calls a brewery parser
 
     def parse_brewery(self, response): #parse single brewery, used to get all beers
-        # print('oi')
-        beers = response.xpath('//table[@id="brewer-beer-table"]/tbody/tr/td/strong/a/@href').extract()
-        driver = webdriver.Firefox()
-        driver.implicitly_wait(100)
-        for beer  in beers:
+        beers = response.xpath('//table[@id="brewer-beer-table"]/tbody/tr/td/strong/a/@href').extract() #extract  beer links
+        driver = webdriver.Firefox() #instantiate Selenium
+        driver.implicitly_wait(100) #selenium max wait
+        for beer  in beers: #go trough beers links
             beer_url = 'https://www.ratebeer.com'+beer
-            driver.get(beer_url)
-            try:
+            driver.get(beer_url) #call selenium to run the link
+            try:#makes selenium waits until 60 seconds for element showing
                 element = WebDriverWait(driver, 60).until(
                     EC.presence_of_element_located((By.XPATH, '//*[@id="beerName"]'))
                 )
-            finally:
-                name = driver.find_element_by_xpath('//*[@id="beerName"]').text
-                print('BEEEEEEER', name)
-                # driver.quit()
-            # selector = Selector(text=driver.page_source)
-            # name = selector.xpath('//*[@id="beerName"]').extract()
+                driver.find_element_by_xpath('//*[@id="beer-card-read-more"]').click()
+                element2 = WebDriverWait(driver, 60).until(
+                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[3]/div[1]/div/div[2]'))
+                )
+            finally: #when selenium find element
+                item = {
+                    'name' : driver.find_element_by_xpath('//*[@id="beerName"]').text,
+                    'brewer' : driver.find_element_by_xpath('//*[@id="brewerLink"]').text,
+                    'beer_style' : driver.find_element_by_xpath('//*[@id="styleLink"]').text,
+                    #MAXSCORE IS 5
+                    'score' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[1]/div[2]/div[2]/div/div[1]/span[1]').text,
+                    'rating_num' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[1]/div[2]/div[2]/div/div[1]/span[3]/span[1]').text,
+                    #alcohol p volumn
+                    'abv' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[1]/div[2]/div[2]/div/div[2]/span[1]').text,
+                    'ibu' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[1]/div[2]/div[2]/div/div[3]/span[1]').text,
+                    'est_cal' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[1]/div[2]/div[2]/div/div[4]/span[1]').text,
+                    'overall' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[1]/div[2]/div[1]/div[1]/span[2]').text,
+                    'style' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[1]/div[2]/div[1]/div[2]/span[1]').text,
+                    'about' : driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[3]/div[1]/div/div[2]').text,
+                }
+                yield item

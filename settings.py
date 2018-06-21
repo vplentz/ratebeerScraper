@@ -15,9 +15,9 @@ SPIDER_MODULES = ['beer.spiders']
 NEWSPIDER_MODULE = 'beer.spiders'
 DOWNLOAD_HANDLERS = {'s3': None,}
 FEED_EXPORT_ENCODING = 'utf-8'
-DOWNLOAD_DELAY = 4
-CONCURRENT_REQUESTS = 8
-CONCURRENT_ITEMS = 50
+DOWNLOAD_DELAY = 2
+CONCURRENT_REQUESTS = 1
+CONCURRENT_ITEMS = 20
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'beer (+http://www.yourdomain.com)'
 
