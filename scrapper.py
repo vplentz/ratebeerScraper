@@ -4,16 +4,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.firefox.options import Options
-# from selenium.webdriver.chrome.options import Options
-import time
 import pandas as pd
 # import time
 
 
 def new_browser(url):
     options = Options()
-    options.add_argument("--headless")
-    # time.sleep(10) #used to not be banned by server
+    options.add_argument("--headless")#setting to use a headless browser
     driver = webdriver.Firefox(firefox_options = options) #instantiate Selenium
     driver.implicitly_wait(100) #selenium max wait
     driver.get(url)
@@ -41,8 +38,8 @@ finally:
     print('GETTING BREWERIES')
     breweries = driver.find_elements_by_xpath('/html/body/div[1]/div[3]/div[1]/div[2]/div/div[1]/table/tbody/tr/td/a') #extract breweries
     brewerie_links = []
-    # for brewery in breweries[::2]: #gets links
-    brewerie_links.append(breweries[16].get_attribute("href"))
+    for brewery in breweries[::2]: #gets links
+        brewerie_links.append(brewery.get_attribute("href"))
     print('GOT ', len(brewerie_links), 'BREWERIES')
     # print(breweries)
     driver.quit() #closes unnused browser
