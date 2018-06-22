@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.firefox.options import Options
 # from selenium.webdriver.chrome.options import Options
 import time
 import pandas as pd
@@ -10,9 +11,11 @@ import pandas as pd
 
 
 def new_browser(url):
-    time.sleep(10) #used to not be banned by server
-    driver = webdriver.Firefox() #instantiate Selenium
-    driver.implicitly_wait(30) #selenium max wait
+    options = Options()
+    options.add_argument("--headless")
+    # time.sleep(10) #used to not be banned by server
+    driver = webdriver.Firefox(firefox_options = options) #instantiate Selenium
+    driver.implicitly_wait(100) #selenium max wait
     driver.get(url)
     return driver
 
@@ -35,36 +38,41 @@ try:#makes selenium waits until 60 seconds for element showing
         EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[3]/div[1]/div[2]/div/div[1]/table/tbody/tr/td/a'))
     )
 finally:
+    print('GETTING BREWERIES')
     breweries = driver.find_elements_by_xpath('/html/body/div[1]/div[3]/div[1]/div[2]/div/div[1]/table/tbody/tr/td/a') #extract breweries
     brewerie_links = []
     # for brewery in breweries[::2]: #gets links
     brewerie_links.append(breweries[16].get_attribute("href"))
+    print('GOT ', len(brewerie_links), 'BREWERIES')
     # print(breweries)
     driver.quit() #closes unnused browser
     for brewery_link in brewerie_links: #access links
-        # print(brewery.get_attribute("href"))
+        print("GETTING BEERS FROM ", brewery_link)
         driver = new_browser(brewery_link)
         try:#waits until page is loaded
             element = WebDriverWait(driver, 100).until(
-                EC.presence_of_element_located((By.XPATH, '//table[@id="brewer-beer-table"]/tbody/tr/td/strong/a'))
+                EC.presence_of_element_located((By.XPATH, '//table[@id="brewer-beer-table"]/tbody/tr/td[not(em/label[@title="Currently out of production"])][not(em)]/strong/a'))
             )
         finally:#gets beers urls
-            beers = driver.find_elements_by_xpath('//table[@id="brewer-beer-table"]/tbody/tr/td/strong/a') #extract  beer links
+            beers = driver.find_elements_by_xpath('//table[@id="brewer-beer-table"]/tbody/tr/td[not(em/label[@title="Currently out of production"])][not(em)]/strong/a') #extract  beer links
             beer_links = []
             for beer in beers:
                 beer_links.append(beer.get_attribute("href"))
+            print('GOT THIS MANY BEERS', len(beer_links))
             driver.quit() #closes unnused browser
             for beer_link in beer_links:
+                print('ACESSING', beer_link)
                 driver = new_browser(beer_link)
                 try:#makes selenium waits until 60 seconds for element showing
-                    element = WebDriverWait(driver, 60).until(
+                    element = WebDriverWait(driver, 100).until(
                         EC.presence_of_element_located((By.XPATH, '//*[@id="beerName"]'))
                     )
                     driver.find_element_by_xpath('//*[@id="beer-card-read-more"]').click()
-                    element2 = WebDriverWait(driver, 60).until(
+                    element2 = WebDriverWait(driver, 100).until(
                         EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[3]/div[1]/div/div[2]'))
                     )
                 finally: #when selenium find element
+                        print('getting data')
                         try:
                             name.append(driver.find_element_by_xpath('//*[@id="beerName"]').text)
                         except NoSuchElementException:
@@ -111,6 +119,8 @@ finally:
                         except NoSuchElementException:
                             about.append(None)
                         driver.quit()
+                        print('quitting driver')
+            print('creating CSV')
             item = {
                 'name' : name,
                 'brewer' : brewer,
