@@ -4,6 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.firefox.options import Options
 import pandas as pd
 # import time
@@ -24,7 +25,7 @@ def new_browser(url):
     try:
         driver.get(url)
     except TimeoutException:
-        LOAD_TIMEOUT += 30
+        LOAD_TIMEOUT += 10
         driver = new_browser(url)
     return driver
 
@@ -39,7 +40,11 @@ def get_beer(beer_link):
         element = WebDriverWait(driver, TIMEOUT).until(
             EC.presence_of_element_located((By.XPATH, '//*[@id="beerName"]'))
         )
-        driver.find_element_by_xpath('//*[@id="beer-card-read-more"]').click()
+        try:
+            driver.find_element_by_xpath('//*[@id="beer-card-read-more"]').click()
+        except ElementClickInterceptedException:
+            TIMEOUT+=2
+            return get_beer(beer_link)
         element2 = WebDriverWait(driver, TIMEOUT).until(
             EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[3]/div[1]/div/div[2]'))
         )
@@ -95,7 +100,7 @@ def get_beer(beer_link):
             photo_url.append(None)
     except TimeoutException:
         print('TIMED OUT, increasing TIMEOUT')
-        IMPLICIT_TIMEOUT += 10
+        IMPLICIT_TIMEOUT += 2
         get_beer(beer_link) #retry
     # finally:
             # driver.quit()
