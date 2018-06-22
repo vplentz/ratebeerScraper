@@ -11,15 +11,14 @@ import pandas as pd
 TIMEOUT = 10
 IMPLICIT_TIMEOUT = 10
 LOAD_TIMEOUT = 30
-driver = None
+options = Options()
+options.add_argument("--headless")#setting to use a headless browser
+driver = webdriver.Firefox(firefox_options = options) #instantiate Selenium
 def new_browser(url):
     global driver
     global TIMEOUT
     global IMPLICIT_TIMEOUT
     global LOAD_TIMEOUT
-    options = Options()
-    options.add_argument("--headless")#setting to use a headless browser
-    driver = webdriver.Firefox(firefox_options = options) #instantiate Selenium
     driver.implicitly_wait(IMPLICIT_TIMEOUT) #selenium max wait
     driver.set_page_load_timeout(LOAD_TIMEOUT)
     try:
@@ -98,9 +97,9 @@ def get_beer(beer_link):
         print('TIMED OUT, increasing TIMEOUT')
         IMPLICIT_TIMEOUT += 10
         get_beer(beer_link) #retry
-    finally:
-            driver.quit()
-            print('quitting driver')
+    # finally:
+            # driver.quit()
+            # print('quitting driver')
 name = []
 brewer = []
 beer_style = []
@@ -128,7 +127,7 @@ finally:
         brewerie_links.append(brewery.get_attribute("href"))
     print('GOT ', len(brewerie_links), 'BREWERIES')
     # print(breweries)
-    driver.quit() #closes unnused browser
+    # driver.quit() #closes unnused browser
     for brewery_link in brewerie_links: #access links
         print("GETTING BEERS FROM ", brewery_link)
         driver = new_browser(brewery_link)
@@ -142,7 +141,7 @@ finally:
             for beer in beers:
                 beer_links.append(beer.get_attribute("href"))
             print('GOT THIS MANY BEERS', len(beer_links))
-            driver.quit() #closes unnused browser
+            # driver.quit() #closes unnused browser
             for beer_link in beer_links:
                 get_beer(beer_link)
     print('creating CSV')
