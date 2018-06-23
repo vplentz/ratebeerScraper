@@ -8,9 +8,7 @@ name | brewer | beer_style | score | rating_num | abv | ibu | est_cal | overall 
 --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 beer name | beer producer | type of beer | ratebeer score | num of ratings | abv | ibu | estimated calories | ratebeer overall | ratebeer style | beer description | beer photo url
 <br> 
-**Way to run it:** 
-  **REQUIREMENT: Selenium**<br>
+Way to run it: 
+  REQUIREMENT: Selenium<br>
   Go to the project directory and type:<br>
-  ```bash
   python3 scrapper.py
-  ```
