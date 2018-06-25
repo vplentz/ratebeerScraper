@@ -12,3 +12,6 @@ Way to run it:
   REQUIREMENT: Selenium<br>
   Go to the project directory and type:<br>
   python3 scrapper.py
+<br>If you eventually get blocked by the site, just run it again with the last brewery link and it wil keep crawling:<br>
+Example: python3 scrapper.py 'lastBreweryLink' 
+
