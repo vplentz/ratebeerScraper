@@ -7,11 +7,13 @@ from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.firefox.options import Options
 import pandas as pd
+import sys
 # import time
 
 TIMEOUT = 10
 IMPLICIT_TIMEOUT = 10
 LOAD_TIMEOUT = 30
+ATTEMPTS = 0
 options = Options()
 options.add_argument("--headless")#setting to use a headless browser
 driver = webdriver.Firefox(firefox_options = options) #instantiate Selenium
@@ -29,10 +31,40 @@ def new_browser(url):
         driver = new_browser(url)
     return driver
 
+def get_beers(brewery_link):
+    global TIMEOUT
+    global IMPLICIT_TIMEOUT
+    global driver
+    global ATTEMPTS
+    print("GETTING BEERS FROM ", brewery_link)
+    driver = new_browser(brewery_link)
+    try:#waits until page is loaded
+        element = WebDriverWait(driver, TIMEOUT).until(
+            EC.presence_of_element_located((By.XPATH, '//table[@id="brewer-beer-table"]/tbody/tr/td[not(em/label[@title="Currently out of production"])][not(em)]/strong/a'))
+        )
+    except TimeoutException:
+        TIMEOUT += 2
+        if ATTEMPTS == 3:
+            ATTEMPTS = 0
+            return None
+        else:
+            ATTEMPTS += 1
+            return get_beers(brewery_link)
+    finally:#gets beers urls
+        beers = driver.find_elements_by_xpath('//table[@id="brewer-beer-table"]/tbody/tr/td[not(em/label[@title="Currently out of production"])][not(em)]/strong/a') #extract  beer links
+        beer_links = []
+        for beer in beers:
+            beer_links.append(beer.get_attribute("href"))
+        print('GOT THIS MANY BEERS', len(beer_links))
+        # driver.quit() #closes unnused browser
+        for beer_link in beer_links:
+            get_beer(beer_link)
+
 def get_beer(beer_link):
     global TIMEOUT
     global IMPLICIT_TIMEOUT
     global driver
+    global ATTEMPTS
     global name, brewer, beer_style, score, rating_num, abv, ibu, est_cal, overall, style, about, photo_url
     print('ACESSING', beer_link)
     try:#makes selenium waits until 60 seconds for element showing
@@ -44,7 +76,12 @@ def get_beer(beer_link):
             driver.find_element_by_xpath('//*[@id="beer-card-read-more"]').click()
         except ElementClickInterceptedException:
             TIMEOUT+=2
-            return get_beer(beer_link)
+            if ATTEMPTS == 3:
+                ATTEMPTS = 0
+                return None
+            else:
+                ATTEMPTS += 1
+                return get_beer(beer_link)
         element2 = WebDriverWait(driver, TIMEOUT).until(
             EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[3]/div[1]/div/div[2]'))
         )
@@ -105,50 +142,8 @@ def get_beer(beer_link):
     # finally:
             # driver.quit()
             # print('quitting driver')
-name = []
-brewer = []
-beer_style = []
-score = []
-rating_num = []
-abv = []
-ibu = []
-est_cal = []
-overall = []
-style = []
-about = []
-photo_url = []
-print('DONT WORRY, ITS NOT FREEZED')
-driver = new_browser('https://www.ratebeer.com/breweries/brazil/0/31/')
-
-try:#makes selenium waits until 60 seconds for element showing
-    element = WebDriverWait(driver, TIMEOUT).until(
-        EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[3]/div[1]/div[2]/div/div[1]/table/tbody/tr/td/a'))
-    )
-finally:
-    print('GETTING BREWERIES')
-    breweries = driver.find_elements_by_xpath('/html/body/div[1]/div[3]/div[1]/div[2]/div/div[1]/table/tbody/tr/td/a') #extract breweries
-    brewerie_links = []
-    for brewery in breweries[::2]: #gets links
-        brewerie_links.append(brewery.get_attribute("href"))
-    print('GOT ', len(brewerie_links), 'BREWERIES')
-    # print(breweries)
-    # driver.quit() #closes unnused browser
-    for brewery_link in brewerie_links: #access links
-        print("GETTING BEERS FROM ", brewery_link)
-        driver = new_browser(brewery_link)
-        try:#waits until page is loaded
-            element = WebDriverWait(driver, TIMEOUT).until(
-                EC.presence_of_element_located((By.XPATH, '//table[@id="brewer-beer-table"]/tbody/tr/td[not(em/label[@title="Currently out of production"])][not(em)]/strong/a'))
-            )
-        finally:#gets beers urls
-            beers = driver.find_elements_by_xpath('//table[@id="brewer-beer-table"]/tbody/tr/td[not(em/label[@title="Currently out of production"])][not(em)]/strong/a') #extract  beer links
-            beer_links = []
-            for beer in beers:
-                beer_links.append(beer.get_attribute("href"))
-            print('GOT THIS MANY BEERS', len(beer_links))
-            # driver.quit() #closes unnused browser
-            for beer_link in beer_links:
-                get_beer(beer_link)
+def insert_into_csv():
+    global name, brewer, beer_style, score, rating_num, abv, ibu, est_cal, overall, style, about, photo_url
     print('creating CSV')
     item = {
             'name' : name,
@@ -167,4 +162,62 @@ finally:
             'photo_url': photo_url,
             }
     df = pd.DataFrame(data=item)
-    df.to_csv('scrappedBeers.csv')
+    df.to_csv('scrapedBeers.csv', mode='a', header=False)
+    #clear data
+    name = []
+    brewer = []
+    beer_style = []
+    score = []
+    rating_num = []
+    abv = []
+    ibu = []
+    est_cal = []
+    overall = []
+    style = []
+    about = []
+    photo_url = []
+
+name = []
+brewer = []
+beer_style = []
+score = []
+rating_num = []
+abv = []
+ibu = []
+est_cal = []
+overall = []
+style = []
+about = []
+photo_url = []
+print(sys.argv)
+brewery_start_url = None
+if len(sys.argv) > 1:
+    brewery_start_url = sys.argv[1]
+print('DONT WORRY, ITS NOT FREEZED')
+driver = new_browser('https://www.ratebeer.com/breweries/brazil/0/31/')
+
+try:#makes selenium waits until 60 seconds for element showing
+    element = WebDriverWait(driver, TIMEOUT).until(
+        EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[3]/div[1]/div[2]/div/div[1]/table/tbody/tr/td/a'))
+    )
+except TimeoutException:
+    print('Load breaweries timeout')
+    exit()
+finally:
+    print('GETTING BREWERIES')
+    try:
+        breweries = driver.find_elements_by_xpath('/html/body/div[1]/div[3]/div[1]/div[2]/div/div[1]/table/tbody/tr/td/a') #extract breweries
+    except NoSuchElementException:
+        print('Couldnt find the breweries table, exit')
+        exit()
+    brewerie_links = []
+    for brewery in breweries[::2]: #gets links
+        brewerie_links.append(brewery.get_attribute("href"))
+    if brewery_start_url != None: #check if has a argv brewery link
+        brewerie_links = brewerie_links[brewerie_links.index(brewery_start_url):]
+    print('GOT ', len(brewerie_links), 'BREWERIES')
+    # print(breweries)
+    # driver.quit() #closes unnused browser
+    for brewery_link in brewerie_links: #access links
+        get_beers(brewery_link)
+        insert_into_csv()
