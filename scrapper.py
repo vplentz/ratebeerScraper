@@ -8,6 +8,8 @@ from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.firefox.options import Options
 import pandas as pd
 import sys
+import numpy as np
+from pathlib import Path
 # import time
 
 TIMEOUT = 10
@@ -65,7 +67,7 @@ def get_beer(beer_link):
     global IMPLICIT_TIMEOUT
     global driver
     global ATTEMPTS
-    global name, brewer, beer_style, score, rating_num, abv, ibu, est_cal, overall, style, about, photo_url
+    global name, brewer, beer_style, score, rating_num, abv, ibu, est_cal, overall, style, about, photo_url, beer_url
     print('ACESSING', beer_link)
     try:#makes selenium waits until 60 seconds for element showing
         driver = new_browser(beer_link)
@@ -135,6 +137,8 @@ def get_beer(beer_link):
             photo_url.append(driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/div/div[2]/div[2]/img').get_attribute("src"))
         except NoSuchElementException:
             photo_url.append(None)
+        get_reviews()
+        beer_url.append(beer_link)
     except TimeoutException:
         print('TIMED OUT, increasing TIMEOUT')
         IMPLICIT_TIMEOUT += 2
@@ -142,8 +146,105 @@ def get_beer(beer_link):
     # finally:
             # driver.quit()
             # print('quitting driver')
+def get_reviews():
+    global TIMEOUT
+    global IMPLICIT_TIMEOUT
+    global driver
+    global ATTEMPTS
+    global aroma_avg, apparence_avg, taste_avg, palate_avg, overall_reviews_avg
+    global aroma_med, apparence_med, taste_med, palate_med, overall_reviews_med
+    aromas = []
+    apparences = []
+    tastes = []
+    palates = []
+    overalls = []
+    try:
+        elements = driver.find_elements_by_xpath('//*[@xmlns="http://www.w3.org/2000/svg"][@width="6"]')
+        print ('elements', len(elements))
+        for i in range(1, len(elements)+1):
+            try:
+                element = WebDriverWait(driver, TIMEOUT).until(
+                    EC.element_to_be_clickable((By.XPATH, '/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/div/div'))
+                )
+                link = driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/div/div')
+                driver.execute_script('arguments[0].click();', link)
+                element = WebDriverWait(driver, TIMEOUT).until(
+                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/span/div/div[1]/div[2]'))
+                )
+                try:
+                    aroma_r =  driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/span/div/div[1]/div[2]').text
+                    aroma_r = aroma_r.replace('/10', '')
+                    aromas.append(int(aroma_r))
+                    # print('aroma_r', int(aroma_r))
+                except NoSuchElementException:
+                    print ('no such element aroma_r')
+                except TimeoutException:
+                    print ('aroma timeout')
+                try:
+                    apparence_r =  driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/span/div/div[2]/div[2]').text
+                    apparence_r = apparence_r.replace('/5', '')
+                    apparences.append(int(apparence_r))
+                    # print('apparence', int(apparence_r))
+                except NoSuchElementException:
+                    print ('no such element apparence_r')
+                except TimeoutException:
+                    print ('apparence timeout')
+                try:
+                    taste_r =  driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/span/div/div[3]/div[2]').text
+                    taste_r = taste_r.replace('/10', '')
+                    tastes.append(int(taste_r))
+                    # print('taste_r', int(taste_r))
+                except NoSuchElementException:
+                    print ('no such element taste_r')
+                except TimeoutException:
+                    print ('taste timeout')
+                try:
+                    palate_r =  driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/span/div/div[4]/div[2]').text
+                    palate_r = palate_r.replace('/5', '')
+                    palates.append(int(palate_r))
+                    # print('palate', int(palate_r))
+                except NoSuchElementException:
+                    print ('no such element palate_r')
+                except TimeoutException:
+                    print ('palate timeout')
+                try:
+                    overall_r =  driver.find_element_by_xpath('/html/body/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/div/div[2]/div['+str(i)+']/div/div[2]/div[4]/span/div/div[5]/div[2]').text
+                    overall_r = overall_r.replace('/20', '')
+                    overalls.append(int(overall_r))
+                    # print('overall_r', int(overall_r))
+                except NoSuchElementException:
+                    print ('no such element overall_r')
+                except TimeoutException:
+                    print ('overall timeout')
+            except TimeoutException:
+                print('bug')
+
+        #get averages
+        aroma_avg.append(np.average(aromas))
+        apparence_avg.append(np.average(apparences))
+        taste_avg.append(np.average(tastes))
+        palate_avg.append(np.average(palates))
+        overall_reviews_avg.append(np.average(overalls))
+
+        #get medians
+        aroma_med.append(np.median(aromas))
+        apparence_med.append(np.median(apparences))
+        taste_med.append(np.median(tastes))
+        palate_med.append(np.median(palates))
+        overall_reviews_med.append(np.median(overalls))
+    except NoSuchElementException:
+        print ('no such element')
+        TIMEOUT+=1
+        if ATTEMPTS == 3:
+            ATTEMPTS = 0
+            return None
+        else:
+            ATTEMPTS += 1
+            return get_reviews()
+
 def insert_into_csv():
-    global name, brewer, beer_style, score, rating_num, abv, ibu, est_cal, overall, style, about, photo_url
+    global name, brewer, beer_style, score, rating_num, abv, ibu, est_cal, overall, style, about, photo_url, beer_url, aroma_avg, apparence_avg, taste_avg, palate_avg, overall_reviews_avg
+    global aroma_med, apparence_med, taste_med, palate_med, overall_reviews_med
     print('creating CSV')
     item = {
             'name' : name,
@@ -159,10 +260,25 @@ def insert_into_csv():
             'overall' : overall,
             'style' : style,
             'about' : about,
+            'beer_url' : beer_url,
             'photo_url': photo_url,
+            'aroma_avg': aroma_avg,
+            'apparence_avg':apparence_avg,
+            'taste_avg' : taste_avg,
+            'palate_avg': palate_avg,
+            'overall_reviews' : overall_reviews_avg,
+            'aroma_med' : aroma_med,
+            'apparence_med' : apparence_med,
+            'taste_med' : taste_med,
+            'palate_med' : palate_med,
+            'overall_reviews_med' : overall_reviews_med,
             }
-    df = pd.DataFrame(data=item)
-    df.to_csv('scrapedBeers.csv', mode='a', header=False)
+    df = pd.DataFrame.from_dict(item)
+    my_file = Path("/home/vplentz/Documentos/psr/beer/beer/scrapedBeers.csv") #set your
+    if my_file.is_file():
+        df.to_csv('scrapedBeers.csv', mode='a', header=False)
+    else:
+        df.to_csv('scrapedBeers.csv')
     #clear data
     name = []
     brewer = []
@@ -176,6 +292,20 @@ def insert_into_csv():
     style = []
     about = []
     photo_url = []
+    beer_url = []
+    #data from reviews
+    #average
+    aroma_avg = []
+    apparence_avg = []
+    taste_avg = []
+    palate_avg = []
+    overall_reviews_avg = []
+    #medians
+    aroma_med = []
+    apparence_med = []
+    taste_med = []
+    palate_med = []
+    overall_reviews_med = []
 
 name = []
 brewer = []
@@ -189,6 +319,21 @@ overall = []
 style = []
 about = []
 photo_url = []
+beer_url = []
+#data from reviews
+#average
+aroma_avg = []
+apparence_avg = []
+taste_avg = []
+palate_avg = []
+overall_reviews_avg = []
+#medians
+aroma_med = []
+apparence_med = []
+taste_med = []
+palate_med = []
+overall_reviews_med = []
+
 print(sys.argv)
 brewery_start_url = None
 if len(sys.argv) > 1:
